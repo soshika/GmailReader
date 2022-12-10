@@ -2,9 +2,12 @@
 import smtplib
 import imaplib
 import email
+import redis_c
 import os
+import re
 import traceback
 from dotenv import load_dotenv
+from symbol_converter import find_symbols, converter
 # -------------------------------------------------
 #
 # Utility to read email from Gmail Using Python
@@ -17,6 +20,11 @@ FROM_EMAIL = os.getenv('EMAIL')
 FROM_PWD = os.getenv('PASSWORD') 
 SMTP_SERVER = "imap.gmail.com" 
 SMTP_PORT = 993
+
+
+def use_regex(input_text):
+    pattern = re.compile(r"Your [a-zA-Z]+ alert was triggered", re.IGNORECASE)
+    return pattern.match(input_text)
 
 def read_email_from_gmail():
     try:
@@ -37,12 +45,22 @@ def read_email_from_gmail():
                 if isinstance(arr, tuple):
                     msg = email.message_from_string(str(arr[1],'utf-8'))
                     email_subject = msg['subject']
-                    email_from = msg['from']
-                    # print(msg.keys())
-                    print(msg['Message-ID'])
-                    # print('From : ' + email_from + '\n')
-                    # print('Subject : ' + email_subject + '\n')
-                    # print(msg)
+
+                    if email_subject != 'TradingView':
+                        continue
+
+                    r = redis_c.REDIS().r
+
+                    exists = r.get(msg['Message-ID'])
+                    if exists:
+                        #end state!
+                        return
+                    else:
+                        r.set(msg['Message-ID'], "True")
+                        symbol = find_symbols(msg)
+                        symbol = converter(symbol)
+                        # send request to API
+                    
                     print('-'*40)
 
     except Exception as e:
