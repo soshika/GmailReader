@@ -1,0 +1,20 @@
+version: "3.3"
+services:
+  gmail-reader:
+      build: .
+      restart: always
+      privileged: true
+      container_name: gmail-reader
+      logging:
+        driver: "json-file"
+        options:
+          max-size: 10m
+          max-file: "3"
+          labels: "production_status"
+          env: "os"
+      labels:
+        production_status: "testing"
+      environment:
+        - os=ubuntu
+      volumes:
+        - /root/projects/gmail-reader:/usr/src/app/cron
